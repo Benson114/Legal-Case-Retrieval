@@ -25,12 +25,10 @@ class BM25_TextPreProcessor:
         if STOPWORD_FILE_DIR.endswith(".txt"):
             with open(STOPWORD_FILE_DIR, "r", encoding="utf-8") as f:
                 self.stopwords.update(f.read().splitlines())
-                f.close()
         else:
             for file in glob(os.path.join(STOPWORD_FILE_DIR, "*.txt")):
                 with open(file, "r", encoding="utf-8") as f:
                     self.stopwords.update(f.read().splitlines())
-                    f.close()
 
     def tokenize_text(self, text, rm_stopwords=True):
         text = text.strip()
@@ -47,9 +45,7 @@ class BM25_TextPreProcessor:
         sents = self.remove_empty(sents)
         i, n = 0, len(sents)
         while i < n:
-            seg = ""
-            for j in range(i, min(i + n_sent, n)):
-                seg += sents[j]
+            seg = "".join(sents[i:min(i + n_sent, n)])
             tokenized_seg = self.tokenize_text(seg)
             segs.append(tokenized_seg)
             i += n_sent - n_overlap
@@ -63,7 +59,6 @@ class BM25_TextPreProcessor:
         segs_with_id = []
         with open(docfile, "r", encoding="utf-8") as f:
             doc = json.load(f)
-            f.close()
         doc_id = doc["id"]
         doc_text = doc["text"]
         segs = self.doc2segs(doc_text, n_sent, n_overlap)
@@ -130,7 +125,6 @@ class DPR_TextPreProcessor:
         segs_with_id = []
         with open(docfile, "r", encoding="utf-8") as f:
             doc = json.load(f)
-            f.close()
         doc_id = doc["id"]
         doc_text = doc["text"]
         segs = self.doc2segs(doc_text, max_length, min_overlap)

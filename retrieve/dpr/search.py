@@ -77,7 +77,6 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
     ]  # Recall results
     with open(embs_info_dir, "r", encoding="utf-8") as f:
         embs_info = json.load(f)  # Embs info of segs of each doc
-        f.close()
 
     logger.info(f"Embedding query segments.")
     query_embs = []

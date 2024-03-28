@@ -44,12 +44,11 @@ def split_database():
 
     with open(BM25_SEGS_INFO, "r", encoding="utf-8") as f:
         bm25_segs_info = json.load(f)
-        f.close()
 
-    all_docs_path = glob(os.path.join(DOCUMENTS_DIR, "*.json"))
-    all_docs_path = list(
-        filter(lambda path: os.path.basename(path) not in bm25_segs_info, all_docs_path)
-    )
+    all_docs_path = [
+        path for path in glob(os.path.join(DOCUMENTS_DIR, "*.json"))
+        if os.path.basename(path) not in bm25_segs_info
+    ]
 
     logger.info(f"Splitting new documents into segments. [Num of new docs: {len(all_docs_path)}]")
     for doc_path in tqdm(all_docs_path):
@@ -58,12 +57,10 @@ def split_database():
         with jsonlines.open(os.path.join(BM25_SEGS_DIR, doc_basename), "w") as writer:
             for doc_seg in doc_segs:
                 writer.write(doc_seg)
-            writer.close()
         bm25_segs_info[doc_basename] = len(doc_segs)
 
     with open(BM25_SEGS_INFO, "w", encoding="utf-8") as f:
         json.dump(bm25_segs_info, f, ensure_ascii=False, indent=4)
-        f.close()
     logger.info(
         f"Splitting done. [Num of all docs: {len(bm25_segs_info)}; Num of all segs: {sum(bm25_segs_info.values())}]")
 

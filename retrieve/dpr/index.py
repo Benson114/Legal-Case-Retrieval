@@ -37,6 +37,7 @@ DPR_EMBED = args["DPR_EMBED"]
 DPR_SEGS_DIR = args["DPR_SEGS_DIR"]
 DPR_SEGS_INFO = args["DPR_SEGS_INFO"]
 DPR_SEGS_EMBS_DIR = args["DPR_SEGS_EMBS_DIR"]
+EMBEDDING_BATCHSIZE = args["EMBEDDING_BATCHSIZE"]
 EMBEDDING_DEVICE = args["EMBEDDING_DEVICE"]
 MAX_LENGTH = args["MAX_LENGTH"]
 MIN_OVERLAP = args["MIN_OVERLAP"]
@@ -52,7 +53,6 @@ def split_database():
 
     with open(DPR_SEGS_INFO, "r", encoding="utf-8") as f:
         dpr_segs_info = json.load(f)
-        f.close()
 
     all_docs_path = glob(os.path.join(DOCUMENTS_DIR, "*.json"))
     all_docs_path = list(
@@ -66,12 +66,10 @@ def split_database():
         with jsonlines.open(os.path.join(DPR_SEGS_DIR, doc_basename), "w") as writer:
             for doc_seg in doc_segs:
                 writer.write(doc_seg)
-            writer.close()
         dpr_segs_info[doc_basename] = len(doc_segs)
 
     with open(DPR_SEGS_INFO, "w", encoding="utf-8") as f:
         json.dump(dpr_segs_info, f, ensure_ascii=False, indent=4)
-        f.close()
     logger.info(
         f"Splitting done. [Num of all docs: {len(dpr_segs_info)}; Num of all segs: {sum(dpr_segs_info.values())}]")
 
@@ -94,14 +92,13 @@ def embed_database():
     if os.path.exists(info_path):
         with open(info_path, "r", encoding="utf-8") as f:
             dpr_embeddings_info = json.load(f)
-            f.close()
     else:
         dpr_embeddings_info = {}
 
-    all_docs_path = glob(os.path.join(DPR_SEGS_DIR, "*.json"))
-    all_docs_path = list(
-        filter(lambda path: os.path.basename(path) not in dpr_embeddings_info, all_docs_path)
-    )
+    all_docs_path = [
+        path for path in glob(os.path.join(DPR_SEGS_DIR, "*.json"))
+        if os.path.basename(path) not in dpr_embeddings_info
+    ]
 
     logger.info(f"Embedding new segments. [Num of new docs: {len(all_docs_path)}]")
     for doc_path in tqdm(all_docs_path):
@@ -112,7 +109,6 @@ def embed_database():
 
         with jsonlines.open(doc_path, "r") as reader:
             doc_segs = list(reader)
-            reader.close()
 
         for doc_seg in doc_segs:
             doc_ids.append(doc_seg["id"])
@@ -140,7 +136,6 @@ def embed_database():
 
         with open(info_path, "w", encoding="utf-8") as f:
             json.dump(dpr_embeddings_info, f, ensure_ascii=False, indent=4)
-            f.close()
     logger.info(
         f"Embedding done. "
         f"[Num of all docs: {len(dpr_embeddings_info)}; "
