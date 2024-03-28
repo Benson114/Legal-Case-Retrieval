@@ -82,6 +82,7 @@ if __name__ == "__main__":
     #
     #         with open("lecardv2_recall.json", "w", encoding="utf-8") as x:
     #             json.dump(lecardv2_recall, x, ensure_ascii=False)
+
     test_query = ("安徽省宿州市埇桥区人民检察院指控："
                   "2014年9月8日晚，被告人梅某与孔某、曾某等人（均另处）在宿州市埇桥区科技广场“天之娇”歌吧唱歌。"
                   "9月9日凌晨1时许，被告人梅某出歌吧，在花园附近小便时，被害人蒋某、王某丙等人从此某，"
