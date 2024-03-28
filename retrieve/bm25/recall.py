@@ -1,11 +1,10 @@
 import json
-import sys, logging
-
-from tqdm import tqdm
+import logging
+import sys
 from pathlib import Path
-from pyserini.search.lucene import LuceneSearcher
 
 import yaml
+from pyserini.search.lucene import LuceneSearcher
 
 args = yaml.safe_load(open("config/config.yaml", "r", encoding="utf-8"))
 STOPWORD_FILE_DIR = args["STOPWORD_FILE_DIR"]
@@ -22,6 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 from src.TextPreprocessing import BM25_TextPreProcessor
+from src.DSParser import DSParser
 
 
 def load_searcher():
@@ -56,7 +56,7 @@ def BM25_Recall(query, num_hits, searcher):
     list_hits.sort(key=lambda x: x["score"], reverse=True)
     list_hits_dedup = []
     for hit in list_hits:
-        doc_id = hit["id"].split("_segment_")[0]
+        doc_id = DSParser.parseSegID(hit["id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
         if doc_id not in list_hits_dedup:
             list_hits_dedup.append(doc_id)
         if len(list_hits_dedup) > num_hits:
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             q_text = line["query"]
 
             hits = BM25_Recall(q_text, RECALL_NUM_HITS, searcher)
-            lecardv2_recall[str(q_id)] = [hit.split("_")[-1] for hit in hits]
+            lecardv2_recall[str(q_id)] = [str(DSParser.parseDocID(hit).doc_id) for hit in hits]
 
             with open("lecardv2_recall.json", "w", encoding="utf-8") as x:
                 json.dump(lecardv2_recall, x, ensure_ascii=False)

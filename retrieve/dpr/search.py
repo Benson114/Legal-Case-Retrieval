@@ -1,4 +1,8 @@
-import os, sys, json, logging
+import json
+import logging
+import os
+import sys
+
 import numpy as np
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
@@ -32,6 +36,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 from src.TextPreprocessing import DPR_TextPreProcessor
+from src.DSParser import DSParser
 
 
 def load_model():
@@ -45,9 +50,10 @@ def load_model():
 
 
 def load_embeddings(npy_list, embs_info):
-    # npy_list 是一个文件路径的列表, 每个文件 (.npy) 是一个 doc 所有 segs 的 embedding 的信息
-    # embs_info 是一个字典, key 是 doc id, value 是该 doc 的所有 segs 的 id, 和 npy_list 中的索引对应
-    # 返回一个可迭代的对象, 每次迭代返回 npy_list 中的一个 doc 的所有 segs 的 id (来自 embs_info) 和 embedding (来自 npy_list), 即一个 npy 文件中的所有 segs 的 id 和 embedding
+    # npy_list是一个文件路径的列表，每个文件（.npy）是一个doc所有segs的embedding的信息
+    # embs_info是一个字典，key是doc_id，value是该doc的所有segs的id，和npy_list中的索引对应
+    # 返回一个可迭代的对象，每次迭代返回npy_list中的一个doc所有segs的id（来自embs_info）和embedding（来自npy_list）
+    # 即一个npy文件中的所有segs的id和embedding
     for npy_path in npy_list:
         seg_embs = np.load(npy_path)
         doc_id = os.path.basename(npy_path).replace(".npy", ".json")
@@ -103,7 +109,7 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
     logger.info("Fetching original searching results.")
     final_results = []
     for hit in search_results:
-        doc_id = hit["seg_id"].split("_segment_")[0]
+        doc_id = DSParser.parseSegID(hit["id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
         if doc_id not in final_results:
             final_results.append(doc_id)
         if len(final_results) > num_hits:

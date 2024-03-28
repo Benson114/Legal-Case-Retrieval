@@ -1,5 +1,6 @@
-import os, sys
 import logging
+import os
+import sys
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ from src.TextPreprocessing import BM25_TextPreProcessor
 
 
 def split_database():
+    """
+    将原始文本库作分块，供pyserini进行索引（只会对未分块过的原始文本操作）
+    """
     bm25_text_preprocessor = BM25_TextPreProcessor()
     bm25_text_preprocessor.get_stopwords(STOPWORD_FILE_DIR)
 
@@ -65,6 +69,9 @@ def split_database():
 
 
 def index_database():
+    """
+    清除原先存在的索引文件，对已经分块的文本重新索引
+    """
     logger.info(f"Cleaning previous index files.")
     for file in glob(os.path.join(BM25_SEGS_INDEX_DIR, "*")):
         os.remove(file)

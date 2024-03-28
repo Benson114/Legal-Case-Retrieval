@@ -1,5 +1,6 @@
-import os, sys
 import logging
+import os
+import sys
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -44,6 +45,9 @@ from src.TextPreprocessing import DPR_TextPreProcessor
 
 
 def split_database():
+    """
+    将原始文本库作分块，供doc-encoder进行编码（只会对未分块过的原始文本操作）
+    """
     dpr_text_preprocessor = DPR_TextPreProcessor()
 
     with open(DPR_SEGS_INFO, "r", encoding="utf-8") as f:
@@ -73,6 +77,9 @@ def split_database():
 
 
 def embed_database():
+    """
+    对已经分块的文本进行编码，不同checkpoint的编码结果分开保存（只会对当前checkpoint未编码过的文本操作）
+    """
     logger.info(f"Loading doc_encoder from {DPR_MODEL_DIR}.")
     doc_encoder = BertModel.from_pretrained(os.path.join(DPR_MODEL_DIR, "doc_encoder"))
     tokenizer = BertTokenizer.from_pretrained(os.path.join(DPR_MODEL_DIR, "doc_encoder"))
