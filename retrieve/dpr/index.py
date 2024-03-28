@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 import warnings
@@ -20,6 +20,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 import torch
 import transformers
+from torch.utils.data import DataLoader
 from transformers import (
     BertModel,
     BertTokenizer
@@ -110,25 +111,25 @@ def embed_database():
         with jsonlines.open(doc_path, "r") as reader:
             doc_segs = list(reader)
 
-        for doc_seg in doc_segs:
-            doc_ids.append(doc_seg["id"])
-            doc_text = doc_seg["contents"]
+        for batch in DataLoader(doc_segs, batch_size=EMBEDDING_BATCHSIZE, shuffle=False, collate_fn=lambda x: x):
+            doc_ids.extend([seg["id"] for seg in batch])
+            text_batch = [seg["contents"] for seg in batch]
 
-            model_input = tokenizer(
-                doc_text,
+            model_inputs = tokenizer(
+                text_batch,
                 return_tensors="pt",
-                padding="max_length",
+                padding=True,
                 truncation=True,
                 max_length=MAX_LENGTH
             ).to(EMBEDDING_DEVICE)
 
             with torch.no_grad():
-                model_output = doc_encoder(**model_input)
+                model_outputs = doc_encoder(**model_inputs)
 
-            doc_embedding = model_output.last_hidden_state[:, 0, :].cpu().numpy()
-            doc_embeddings.append(doc_embedding)
+            embedding_batch = model_outputs.last_hidden_state[:, 0, :].cpu().numpy()
+            doc_embeddings.extend(embedding_batch)
 
-        doc_embeddings = np.concatenate(doc_embeddings, axis=0)
+        doc_embeddings = np.array(doc_embeddings)
 
         npy_doc_basename = doc_basename.replace(".json", ".npy")
         np.save(os.path.join(DPR_SEGS_EMBS_DIR, ckpt_name, npy_doc_basename), doc_embeddings)
