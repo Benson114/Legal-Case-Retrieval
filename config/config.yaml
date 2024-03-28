@@ -1,36 +1,37 @@
 ## Original Database
-DOCUMENTS_DIR: /Documents/LCRdatabase/original
-STOPWORD_FILE_DIR: src/stopwords/
+DOCUMENTS_DIR:
+STOPWORD_FILE_DIR:
 
 
 ## BM25-Related
-BM25_SEGS_DIR: /Documents/LCRdatabase/segs/bm25/
-BM25_SEGS_INFO: /Documents/LCRdatabase/segs/bm25_info.json
-BM25_SEGS_INDEX_DIR: /Documents/LCRdatabase/pyserini_index/
-BM25_SPLIT: True
-BM25_INDEX: True
+BM25_SEGS_DIR:
+BM25_SEGS_INFO:
+BM25_SEGS_INDEX_DIR:
+BM25_SPLIT:
+BM25_INDEX:
 # doc2segs
-N_SENT: 10
-N_OVERLAP: 5
+N_SENT:
+N_OVERLAP:
 # pyserini.index
-INDEX_THREADS: 8
+INDEX_THREADS:
 # pyserini.search
-SEARCH_K: 1500
-SEARCH_THREADS: 8
+SEARCH_K:
+SEARCH_THREADS:
 # Recall
-RECALL_NUM_HITS: 200
+RECALL_NUM_HITS:
 
 
 ## DPR-Related
-DPR_SEGS_DIR: /Documents/LCRdatabase/segs/dpr/
-DPR_SEGS_INFO: /Documents/LCRdatabase/segs/dpr_info.json
-DPR_SEGS_EMBS_DIR: /Documents/LCRdatabase/dpr_embedding/
-DPR_MODEL_DIR: models/trained_model/ckpt-0322-step11520
-DPR_SPLIT: True
-DPR_EMBED: True
-EMBEDDING_DEVICE: cuda
+DPR_SEGS_DIR:
+DPR_SEGS_INFO:
+DPR_SEGS_EMBS_DIR:
+DPR_MODEL_DIR:
+DPR_SPLIT:
+DPR_EMBED:
+EMBEDDING_BATCHSIZE:
+EMBEDDING_DEVICE:
 # doc2segs
-MAX_LENGTH: 512
-MIN_OVERLAP: 128
+MAX_LENGTH:
+MIN_OVERLAP:
 # Search
-SEARCH_NUM_HITS: 30
+SEARCH_NUM_HITS:
