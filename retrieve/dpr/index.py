@@ -1,0 +1,152 @@
+import os, sys
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
+
+import numpy as np
+import json, jsonlines
+
+from glob import glob
+from tqdm import tqdm
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+
+import torch
+import transformers
+from transformers import (
+    BertModel,
+    BertTokenizer
+)
+
+transformers.logging.set_verbosity_error()
+
+import yaml
+
+args = yaml.safe_load(open("config/config.yaml", "r", encoding="utf-8"))
+DOCUMENTS_DIR = args["DOCUMENTS_DIR"]
+DPR_MODEL_DIR = args["DPR_MODEL_DIR"]
+DPR_SPLIT = args["DPR_SPLIT"]
+DPR_EMBED = args["DPR_EMBED"]
+DPR_SEGS_DIR = args["DPR_SEGS_DIR"]
+DPR_SEGS_INFO = args["DPR_SEGS_INFO"]
+DPR_SEGS_EMBS_DIR = args["DPR_SEGS_EMBS_DIR"]
+EMBEDDING_DEVICE = args["EMBEDDING_DEVICE"]
+MAX_LENGTH = args["MAX_LENGTH"]
+MIN_OVERLAP = args["MIN_OVERLAP"]
+
+from src.TextPreprocessing import DPR_TextPreProcessor
+
+
+def split_database():
+    dpr_text_preprocessor = DPR_TextPreProcessor()
+
+    with open(DPR_SEGS_INFO, "r", encoding="utf-8") as f:
+        dpr_segs_info = json.load(f)
+        f.close()
+
+    all_docs_path = glob(os.path.join(DOCUMENTS_DIR, "*.json"))
+    all_docs_path = list(
+        filter(lambda path: os.path.basename(path) not in dpr_segs_info, all_docs_path)
+    )
+
+    logger.info(f"Splitting new documents into segments. [Num of new docs: {len(all_docs_path)}]")
+    for doc_path in tqdm(all_docs_path):
+        doc_basename = os.path.basename(doc_path)
+        doc_segs = dpr_text_preprocessor.docfile2segs(doc_path, MAX_LENGTH, MIN_OVERLAP)
+        with jsonlines.open(os.path.join(DPR_SEGS_DIR, doc_basename), "w") as writer:
+            for doc_seg in doc_segs:
+                writer.write(doc_seg)
+            writer.close()
+        dpr_segs_info[doc_basename] = len(doc_segs)
+
+    with open(DPR_SEGS_INFO, "w", encoding="utf-8") as f:
+        json.dump(dpr_segs_info, f, ensure_ascii=False, indent=4)
+        f.close()
+    logger.info(
+        f"Splitting done. [Num of all docs: {len(dpr_segs_info)}; Num of all segs: {sum(dpr_segs_info.values())}]")
+
+
+def embed_database():
+    logger.info(f"Loading doc_encoder from {DPR_MODEL_DIR}.")
+    doc_encoder = BertModel.from_pretrained(os.path.join(DPR_MODEL_DIR, "doc_encoder"))
+    tokenizer = BertTokenizer.from_pretrained(os.path.join(DPR_MODEL_DIR, "doc_encoder"))
+    doc_encoder.eval()
+    doc_encoder.to(EMBEDDING_DEVICE)
+    logger.info(f"Doc_encoder loaded.")
+
+    ckpt_name = os.path.basename(DPR_MODEL_DIR)
+    os.makedirs(os.path.join(DPR_SEGS_EMBS_DIR, ckpt_name), exist_ok=True)
+
+    info_path = os.path.join(DPR_SEGS_EMBS_DIR, f"{ckpt_name}_info.json")
+    if os.path.exists(info_path):
+        with open(info_path, "r", encoding="utf-8") as f:
+            dpr_embeddings_info = json.load(f)
+            f.close()
+    else:
+        dpr_embeddings_info = {}
+
+    all_docs_path = glob(os.path.join(DPR_SEGS_DIR, "*.json"))
+    all_docs_path = list(
+        filter(lambda path: os.path.basename(path) not in dpr_embeddings_info, all_docs_path)
+    )
+
+    logger.info(f"Embedding new segments. [Num of new docs: {len(all_docs_path)}]")
+    for doc_path in tqdm(all_docs_path):
+        doc_basename = os.path.basename(doc_path)
+
+        doc_ids = []
+        doc_embeddings = []
+
+        with jsonlines.open(doc_path, "r") as reader:
+            doc_segs = list(reader)
+            reader.close()
+
+        for doc_seg in doc_segs:
+            doc_ids.append(doc_seg["id"])
+            doc_text = doc_seg["contents"]
+
+            model_input = tokenizer(
+                doc_text,
+                return_tensors="pt",
+                padding="max_length",
+                truncation=True,
+                max_length=MAX_LENGTH
+            ).to(EMBEDDING_DEVICE)
+
+            with torch.no_grad():
+                model_output = doc_encoder(**model_input)
+
+            doc_embedding = model_output.last_hidden_state[:, 0, :].cpu().numpy()
+            doc_embeddings.append(doc_embedding)
+
+        doc_embeddings = np.concatenate(doc_embeddings, axis=0)
+
+        npy_doc_basename = doc_basename.replace(".json", ".npy")
+        np.save(os.path.join(DPR_SEGS_EMBS_DIR, ckpt_name, npy_doc_basename), doc_embeddings)
+        dpr_embeddings_info[doc_basename] = doc_ids
+
+        with open(info_path, "w", encoding="utf-8") as f:
+            json.dump(dpr_embeddings_info, f, ensure_ascii=False, indent=4)
+            f.close()
+    logger.info(
+        f"Embedding done. "
+        f"[Num of all docs: {len(dpr_embeddings_info)}; "
+        f"Num of all segs: {sum([len(ids) for ids in dpr_embeddings_info.values()])}]"
+    )
+
+
+def main(SPLIT, EMBED):
+    if SPLIT:
+        split_database()
+    if EMBED:
+        embed_database()
+
+
+if __name__ == "__main__":
+    main(DPR_SPLIT, DPR_EMBED)
