@@ -32,6 +32,12 @@ def load_searcher():
 
 
 def BM25_Recall(query, num_hits, searcher):
+    """
+    :param query: 查询文本/文档，是一个字符串
+    :param num_hits: 初步召回结果的数量
+    :param searcher: pyserini BM25检索器
+    :return: 初步召回结果列表，每个元素是一个字典，包含id和score两个key
+    """
     bm25_text_preprocessor = BM25_TextPreProcessor()
     bm25_text_preprocessor.get_stopwords(STOPWORD_FILE_DIR)
 
@@ -46,7 +52,7 @@ def BM25_Recall(query, num_hits, searcher):
         for hit in hits:
             list_hits.append(
                 {
-                    "id": hit.docid,
+                    "seg_id": hit.docid,  # hit.docid是pyserini检索结果的文档id，在这里指的是SegID().seg_id
                     "score": hit.score
                 }
             )
@@ -56,9 +62,15 @@ def BM25_Recall(query, num_hits, searcher):
     list_hits.sort(key=lambda x: x["score"], reverse=True)
     list_hits_dedup = []
     for hit in list_hits:
-        doc_id = DSParser.parseSegID(hit["id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
+        doc_id = DSParser.parseSegID(hit["seg_id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
         if doc_id not in list_hits_dedup:
-            list_hits_dedup.append(doc_id)
+            # list_hits_dedup.append(doc_id)
+            list_hits_dedup.append(
+                {
+                    "id": doc_id,
+                    "score": hit["score"]
+                }
+            )
         if len(list_hits_dedup) > num_hits:
             break
     logger.info(f"Fetching done. [Num of original hits: {len(list_hits)}]")
