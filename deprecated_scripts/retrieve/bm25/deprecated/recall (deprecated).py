@@ -8,9 +8,10 @@ from pyserini.search.lucene import LuceneSearcher
 
 args = yaml.safe_load(open("config/config.yaml", "r", encoding="utf-8"))
 STOPWORD_FILE_DIR = args["STOPWORD_FILE_DIR"]
-BM25_TEXTS_DIR = args["BM25_TEXTS_DIR"]
-BM25_TEXTS_INFO = args["BM25_TEXTS_INFO"]
-BM25_TEXTS_INDEX_DIR = args["BM25_TEXTS_INDEX_DIR"]
+BM25_SEGS_DIR = args["BM25_SEGS_DIR"]
+BM25_SEGS_INFO = args["BM25_SEGS_INFO"]
+BM25_SEGS_INDEX_DIR = args["BM25_SEGS_INDEX_DIR"]
+SEARCH_K = args["SEARCH_K"]
 SEARCH_THREADS = args["SEARCH_THREADS"]
 RECALL_NUM_HITS = args["RECALL_NUM_HITS"]
 
@@ -25,7 +26,7 @@ from src.SegIDParser import SegIDParser
 
 def load_searcher():
     logger.info("Loading pyserini BM25 index.")
-    searcher = LuceneSearcher(BM25_TEXTS_INDEX_DIR)
+    searcher = LuceneSearcher(BM25_SEGS_INDEX_DIR)
     logger.info("Loading done.")
     return searcher
 
@@ -40,33 +41,41 @@ def BM25_Recall(query, num_hits, searcher):
     bm25_text_preprocessor = BM25_TextPreProcessor()
     bm25_text_preprocessor.get_stopwords(STOPWORD_FILE_DIR)
 
-    tokenized_query = bm25_text_preprocessor.tokenize_text(query)
-    length = len(tokenized_query)
+    logger.info(f"Splitting query into segments.")
+    query_segs = bm25_text_preprocessor.doc2segs(query, 10, 5)
+    logger.info(f"Splitting done. [Num of query segs: {len(query_segs)}]")
 
-    logger.info("Preliminary searching for relevant docs.")
+    logger.info("Preliminary searching for relevant segments of each query segments.")
     list_hits = []
-    for i in range(0, length, 1024):
-        hits = searcher.search(tokenized_query[i:i + 1024], k=RECALL_NUM_HITS)
+    for seg in query_segs:
+        hits = searcher.search(seg[0:1024], k=SEARCH_K)
         for hit in hits:
             list_hits.append(
                 {
-                    "id": hit.docid,  # hit.docid是pyserini检索结果的文档id，在这里指的是doc_id
+                    "seg_id": hit.docid,  # hit.docid是pyserini检索结果的文档id，在这里指的是SegID().seg_id
                     "score": hit.score
                 }
             )
-    logger.info(f"Preliminary searching done. [Num of docs: {len(list_hits)}]")
+    logger.info(f"Preliminary searching done. [Num of segments: {len(list_hits)}]")
 
     logger.info("Fetching original recalling results.")
     list_hits.sort(key=lambda x: x["score"], reverse=True)
-    list_hits_deduplicated = []
+    list_hits_dedup = []
     for hit in list_hits:
-        if hit not in list_hits_deduplicated:
-            list_hits_deduplicated.append(hit)
-        if len(list_hits_deduplicated) > num_hits:
+        doc_id = SegIDParser.parseSegID(hit["seg_id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
+        if doc_id not in list_hits_dedup:
+            # list_hits_dedup.append(doc_id)
+            list_hits_dedup.append(
+                {
+                    "id": doc_id,
+                    "score": hit["score"]
+                }
+            )
+        if len(list_hits_dedup) > num_hits:
             break
     logger.info(f"Fetching done. [Num of original hits: {len(list_hits)}]")
 
-    return list_hits_deduplicated[:num_hits]
+    return list_hits_dedup[:num_hits]
 
 
 if __name__ == "__main__":
@@ -94,6 +103,6 @@ if __name__ == "__main__":
                   "针对上述指控，公诉机关当庭提交了鉴定意见、相关书证、被害人陈述、证人证言、被告人的供述与辩解等证据予以证实，"
                   "认为被告人梅某随意殴打他人，情节恶劣，其行为触犯了《中华人民共和国刑法》××之规定，"
                   "应当以××罪追究其刑事责任，建议对被告人梅某在××以内量刑。")
-    hits = BM25_Recall(test_query, RECALL_NUM_HITS, searcher)
+    hits = BM25_Recall(test_query, 100, searcher)
     with open("test_recall.json", "w", encoding="utf-8") as x:
         json.dump(hits, x, ensure_ascii=False, indent=4)

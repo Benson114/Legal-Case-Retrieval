@@ -52,8 +52,11 @@ def split_database():
     """
     dpr_text_preprocessor = DPR_TextPreProcessor()
 
-    with open(DPR_SEGS_INFO, "r", encoding="utf-8") as f:
-        dpr_segs_info = json.load(f)
+    if os.path.exists(DPR_SEGS_INFO):
+        with open(DPR_SEGS_INFO, "r", encoding="utf-8") as f:
+            dpr_segs_info = json.load(f)
+    else:
+        dpr_segs_info = {}
 
     all_docs_path = glob(os.path.join(DOCUMENTS_DIR, "*.json"))
     all_docs_path = list(
@@ -68,9 +71,9 @@ def split_database():
             for doc_seg in doc_segs:
                 writer.write(doc_seg)
         dpr_segs_info[doc_basename] = len(doc_segs)
-
-    with open(DPR_SEGS_INFO, "w", encoding="utf-8") as f:
-        json.dump(dpr_segs_info, f, ensure_ascii=False, indent=4)
+        # TODO?
+        with open(DPR_SEGS_INFO, "w", encoding="utf-8") as f:
+            json.dump(dpr_segs_info, f, ensure_ascii=False, indent=4)
     logger.info(
         f"Splitting done. [Num of all docs: {len(dpr_segs_info)}; Num of all segs: {sum(dpr_segs_info.values())}]")
 
@@ -144,10 +147,10 @@ def embed_database():
     )
 
 
-def main(SPLIT, EMBED):
-    if SPLIT:
+def main(split, embed):
+    if split:
         split_database()
-    if EMBED:
+    if embed:
         embed_database()
 
 

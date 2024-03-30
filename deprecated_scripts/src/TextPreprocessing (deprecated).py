@@ -31,11 +31,6 @@ class BM25_TextPreProcessor:
                     self.stopwords.update(f.read().splitlines())
 
     def tokenize_text(self, text, rm_stopwords=True):
-        """
-        Args:
-            text: str, 待分词的文本
-            rm_stopwords: bool, 是否去除停用词
-        """
         text = text.strip()
         words = jieba.cut(text, cut_all=False, HMM=True)
         words = self.remove_empty(words)
@@ -44,21 +39,36 @@ class BM25_TextPreProcessor:
         tokenized_text = " ".join(words)
         return tokenized_text
 
-    def tokenize_docfile(self, docfile):
+    def doc2segs(self, doc, n_sent, n_overlap):
+        segs = []
+        sents = re.split(r"(?<=[。！!？?])", doc)
+        sents = self.remove_empty(sents)
+        i, n = 0, len(sents)
+        while i < n:
+            seg = "".join(sents[i:min(i + n_sent, n)])
+            tokenized_seg = self.tokenize_text(seg)
+            segs.append(tokenized_seg)
+            i += n_sent - n_overlap
+        return segs
+
+    def docfile2segs(self, docfile, n_sent, n_overlap):
         """
         Args:
-            docfile: str, 文档文件路径
+            docfile: str, 文档路径, json 格式, 包含 id 和 text 两个字段
         """
+        segs_with_id = []
         with open(docfile, "r", encoding="utf-8") as f:
             doc = json.load(f)
         doc_id = doc["id"]
         doc_text = doc["text"]
-        tokenized_text = self.tokenize_text(doc_text)
-        doc_dict = {
-            "id": doc_id,
-            "contents": tokenized_text,
-        }
-        return doc_dict
+        segs = self.doc2segs(doc_text, n_sent, n_overlap)
+        for i, seg in enumerate(segs):
+            seg_dict = {
+                "id": f"{doc_id}_segment_{i}",
+                "contents": seg,
+            }
+            segs_with_id.append(seg_dict)
+        return segs_with_id
 
 
 class DPR_TextPreProcessor:
@@ -70,11 +80,6 @@ class DPR_TextPreProcessor:
         return list(filter(None, list_))
 
     def sentencize_text(self, doc, max_length):
-        """
-        Args:
-            doc: str, 文档内容
-            max_length: int, 每个分段的最大长度
-        """
         delimiters = [
             "(?<=[。！!？?])",
             "(?<=[；;])",
@@ -95,12 +100,6 @@ class DPR_TextPreProcessor:
         return sents
 
     def doc2segs(self, doc, max_length, min_overlap):
-        """
-        Args:
-            doc: str, 文档内容
-            max_length: int, 每个分段的最大长度
-            min_overlap: int, 分段之间的最小重叠长度
-        """
         sents = self.sentencize_text(doc, max_length)
         segs = []
         i, n = 0, len(sents)
@@ -121,9 +120,7 @@ class DPR_TextPreProcessor:
     def docfile2segs(self, docfile, max_length, min_overlap):
         """
         Args:
-            docfile: str, 文档文件路径
-            max_length: int, 每个分段的最大长度
-            min_overlap: int, 分段之间的最小重叠长度
+            docfile: str, 文档路径, json 格式, 包含 id 和 text 两个字段
         """
         segs_with_id = []
         with open(docfile, "r", encoding="utf-8") as f:
