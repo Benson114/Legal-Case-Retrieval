@@ -119,15 +119,17 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
 
     logger.info("Fetching original searching results.")
     final_results = []
+    final_set = set()
     for hit in search_results:
         doc_id = SegIDParser.parseSegID(hit["seg_id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
-        if doc_id not in final_results:
+        if doc_id not in final_set:
             final_results.append(
                 {
                     "id": doc_id,
                     "score": float(hit["score"])  # 将numpy.float32转为float，避免写入json时报错
                 }
             )
+            final_set.add(doc_id)
         if len(final_results) >= num_hits:
             break
     logger.info(f"Fetching done. [Num of original hits: {len(final_results)}]")
