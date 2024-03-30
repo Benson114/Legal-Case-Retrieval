@@ -62,7 +62,7 @@ def BM25_Recall(query, num_hits, searcher):
     for hit in list_hits:
         if hit not in list_hits_deduplicated:
             list_hits_deduplicated.append(hit)
-        if len(list_hits_deduplicated) > num_hits:
+        if len(list_hits_deduplicated) >= num_hits:
             break
     logger.info(f"Fetching done. [Num of original hits: {len(list_hits)}]")
 

@@ -66,7 +66,7 @@ def load_embeddings(npy_list, embs_info):
 def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
     """
     :param query: 查询文本/文档，是一个字符串
-    :param list_hits: 初步召回结果/候选池列表，每个元素是一个字典，包含id和score两个key
+    :param list_hits: 初步召回结果/候选池列表，每个元素是一个字典，至少包含id这个key
     :param num_hits: 最终检索结果的数量
     :param query_encoder: 加载的query_encoder模型
     :param tokenizer: 加载的tokenizer
@@ -82,7 +82,8 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
     embs_dir = os.path.join(DPR_SEGS_EMBS_DIR, ckpt_name)
     embs_info_dir = os.path.join(DPR_SEGS_EMBS_DIR, f"{ckpt_name}_info.json")
     npy_list = [
-        os.path.join(embs_dir, f"{hit['id']}.npy")
+        # os.path.join(embs_dir, f"{hit['id']}.npy")
+        os.path.join(embs_dir, f"{hit}.npy")
         for hit in list_hits
     ]  # Recall results
     with open(embs_info_dir, "r", encoding="utf-8") as f:
@@ -127,7 +128,7 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
                     "score": float(hit["score"])  # 将numpy.float32转为float，避免写入json时报错
                 }
             )
-        if len(final_results) > num_hits:
+        if len(final_results) >= num_hits:
             break
     logger.info(f"Fetching done. [Num of original hits: {len(final_results)}]")
 
@@ -147,7 +148,7 @@ if __name__ == "__main__":
             q_hits = line["recall"]
 
             list_hits = []
-            search_results = DPR_Search(q_text, list_hits, SEARCH_NUM_HITS, query_encoder, tokenizer)
+            search_results = DPR_Search(q_text, q_hits, SEARCH_NUM_HITS, query_encoder, tokenizer)
 
             search_results = [res["id"].replace("cail2022_", "") for res in search_results]
             cail2022_res[q_id] = search_results
