@@ -82,6 +82,7 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
     embs_dir = os.path.join(DPR_SEGS_EMBS_DIR, ckpt_name)
     embs_info_dir = os.path.join(DPR_SEGS_EMBS_DIR, f"{ckpt_name}_info.json")
     npy_list = [
+        # TODO?
         # os.path.join(embs_dir, f"{hit['id']}.npy")
         os.path.join(embs_dir, f"{hit}.npy")
         for hit in list_hits
@@ -121,7 +122,6 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
     for hit in search_results:
         doc_id = SegIDParser.parseSegID(hit["seg_id"]).seg_source  # 此处的doc_id对应的是SegID().seg_source
         if doc_id not in final_results:
-            # final_results.append(doc_id)
             final_results.append(
                 {
                     "id": doc_id,
