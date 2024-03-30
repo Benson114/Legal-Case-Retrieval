@@ -59,9 +59,11 @@ def BM25_Recall(query, num_hits, searcher):
     logger.info("Fetching original recalling results.")
     list_hits.sort(key=lambda x: x["score"], reverse=True)
     list_hits_deduplicated = []
+    set_hits = set()
     for hit in list_hits:
-        if hit not in list_hits_deduplicated:
+        if hit["id"] not in set_hits:
             list_hits_deduplicated.append(hit)
+            set_hits.add(hit["id"])
         if len(list_hits_deduplicated) >= num_hits:
             break
     logger.info(f"Fetching done. [Num of original hits: {len(list_hits)}]")
