@@ -27,6 +27,7 @@ DPR_SEGS_INFO = args["DPR_SEGS_INFO"]
 DPR_SEGS_EMBS_DIR = args["DPR_SEGS_EMBS_DIR"]
 EMBEDDING_DEVICE = args["EMBEDDING_DEVICE"]
 MAX_LENGTH = args["MAX_LENGTH"]
+SEARCH_NUM_HITS = args["SEARCH_NUM_HITS"]
 
 transformers.logging.set_verbosity_error()
 
@@ -134,17 +135,21 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
 
 
 if __name__ == "__main__":
-    test_query = ("安徽省宿州市埇桥区人民检察院指控："
-                  "2014年9月8日晚，被告人梅某与孔某、曾某等人（均另处）在宿州市埇桥区科技广场“天之娇”歌吧唱歌。"
-                  "9月9日凌晨1时许，被告人梅某出歌吧，在花园附近小便时，被害人蒋某、王某丙等人从此某，"
-                  "被告人梅某认为王某丙看了他一眼，纠集孔某、曾某等人追至“老乡鸡饭店”附近的公交站台，"
-                  "持砖头等物一起对王某甲、蒋某、王某丙殴打，并将蒋某、王某丙打伤。经鉴定，蒋某、王某丙的伤情为轻微伤。"
-                  "针对上述指控，公诉机关当庭提交了鉴定意见、相关书证、被害人陈述、证人证言、被告人的供述与辩解等证据予以证实，"
-                  "认为被告人梅某随意殴打他人，情节恶劣，其行为触犯了《中华人民共和国刑法》××之规定，"
-                  "应当以××罪追究其刑事责任，建议对被告人梅某在××以内量刑。")
-    list_hits = json.load(open("test_recall.json", "r", encoding="utf-8"))
-    num_hits = 5
-    query_encoder, tokenizer = load_model()
-    final_results = DPR_Search(test_query, list_hits, num_hits, query_encoder, tokenizer)
-    with open("test_search.json", "w", encoding="utf-8") as f:
-        json.dump(final_results, f, ensure_ascii=False, indent=4)
+    query_path = "eval/cail2022_test_recall.json"
+    cail2022_res = {}
+    with open(query_path, "r", encoding="utf-8") as f:
+        for idx, line in enumerate(f):
+            logger.info(f"Searching for query {idx + 1}.")
+            line = json.loads(line)
+            q_id = line["id"]
+            q_text = line["text"]
+            q_hits = line["recall"]
+
+            query_encoder, tokenizer = load_model()
+            list_hits = []
+            search_results = DPR_Search(q_text, list_hits, SEARCH_NUM_HITS, query_encoder, tokenizer)
+
+            search_results = [res["id"].replace("cail2022_", "") for res in search_results]
+            cail2022_res[q_id] = search_results
+    with open("eval/prediction.json", "w", encoding="utf-8") as f:
+        json.dump(cail2022_res, f, ensure_ascii=False)
