@@ -137,6 +137,7 @@ def DPR_Search(query, list_hits, num_hits, query_encoder, tokenizer):
 if __name__ == "__main__":
     query_path = "eval/cail2022_test_recall.json"
     cail2022_res = {}
+    query_encoder, tokenizer = load_model()
     with open(query_path, "r", encoding="utf-8") as f:
         for idx, line in enumerate(f):
             logger.info(f"Searching for query {idx + 1}.")
@@ -145,7 +146,6 @@ if __name__ == "__main__":
             q_text = line["text"]
             q_hits = line["recall"]
 
-            query_encoder, tokenizer = load_model()
             list_hits = []
             search_results = DPR_Search(q_text, list_hits, SEARCH_NUM_HITS, query_encoder, tokenizer)
 
